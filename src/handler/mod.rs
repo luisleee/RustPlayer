@@ -17,36 +17,21 @@
 
 use crossterm::event::KeyCode;
 
-use crate::app::{ActiveModules, App, Routes};
+use crate::app::{App, Routes};
 
 use self::{
     fs::handle_fs,
     help::handle_help,
-    music_controller::{handle_music_controller, handle_radio_controller},
-    player::{handle_player, handle_radio},
-    radio::handle_radio_fs,
+    music_controller::{handle_music_controller},
+    player::{handle_player},
 };
 
 mod fs;
 mod help;
 mod music_controller;
 mod player;
-mod radio;
+mod repetition;
 
-pub fn handle_active_modules(app: &mut App, key: KeyCode) -> bool {
-    match key {
-        KeyCode::Tab => {
-            if app.active_modules == ActiveModules::Fs {
-                app.active_modules = ActiveModules::RadioList;
-            } else if app.active_modules == ActiveModules::RadioList {
-                app.active_modules = ActiveModules::Fs;
-            }
-            return true;
-        }
-        _ => {}
-    }
-    false
-}
 
 pub fn handle_routes(app: &mut App, key: KeyCode) -> bool {
     match key {
@@ -74,39 +59,17 @@ pub fn handle_keyboard_event(app: &mut App, key: KeyCode) {
 
     match top_route {
         Routes::Main => {
-            flag = handle_active_modules(app, key);
+            flag = handle_fs(app, key);
             if flag {
                 return;
             }
-            match app.active_modules {
-                ActiveModules::Fs => {
-                    flag = handle_fs(app, key);
-                    if flag {
-                        return;
-                    }
-                    flag = handle_player(app, key);
-                    if flag {
-                        return;
-                    }
-                    flag = handle_music_controller(app, key);
-                    if flag {
-                        return;
-                    }
-                }
-                ActiveModules::RadioList => {
-                    flag = handle_radio_fs(app, key);
-                    if flag {
-                        return;
-                    }
-                    flag = handle_radio(app, key);
-                    if flag {
-                        return;
-                    }
-                    flag = handle_radio_controller(app, key);
-                    if flag {
-                        return;
-                    }
-                }
+            flag = handle_player(app, key);
+            if flag {
+                return;
+            }
+            flag = handle_music_controller(app, key);
+            if flag {
+                return;
             }
         }
         Routes::Help => {

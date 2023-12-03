@@ -20,7 +20,6 @@ use std::time::Duration;
 pub struct Config {
     pub refresh_rate: Duration,
     pub tick_gap: Duration,
-    pub home_page: &'static str,
 }
 
 impl Config {
@@ -28,7 +27,6 @@ impl Config {
         Self {
             refresh_rate: Duration::from_millis(15),
             tick_gap: Duration::from_millis(100),
-            home_page: "https://github.com/KetaNetwork",
         }
     }
 }

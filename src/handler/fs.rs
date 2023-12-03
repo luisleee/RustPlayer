@@ -23,7 +23,7 @@ use std::{
 use crossterm::event::KeyCode;
 
 use crate::{
-    app::{ActiveModules, App, Routes},
+    app::{ App, Routes},
     media::{
         media::{Media, Source},
         player::Player,
@@ -94,9 +94,7 @@ fn add_media_to_player(app: &mut App, once: bool) -> bool {
 }
 
 pub fn handle_fs(app: &mut App, key: KeyCode) -> bool {
-    if app.active_modules != ActiveModules::Fs {
-        return false;
-    }
+
     match app.route_stack.first() {
         Some(route) => {
             if *route != Routes::Main {

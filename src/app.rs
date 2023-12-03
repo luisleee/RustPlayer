@@ -41,15 +41,12 @@ use crate::{
     config::Config,
     fs::FsExplorer,
     handler::handle_keyboard_event,
-    media::player::{MusicPlayer, Player, RadioPlayer},
+    media::player::{MusicPlayer, Player},
     ui::{
         fs::draw_fs_tree,
         help::draw_help,
-        music_board::{draw_music_board, MusicController},
-        radio::{draw_radio_list, RadioExplorer},
         EventType,
     },
-    util::m3u8::empty_cache,
 };
 
 pub enum InputMode {
@@ -62,23 +59,14 @@ pub enum Routes {
     Help,
 }
 
-#[derive(PartialEq)]
-pub enum ActiveModules {
-    Fs,
-    RadioList,
-}
 
 pub struct App {
     pub mode: InputMode,
     pub fs: FsExplorer,
-    pub radio_fs: RadioExplorer,
     pub route_stack: Vec<Routes>,
     pub player: MusicPlayer,
-    pub radio: RadioPlayer,
     pub music_controller: MusicController,
-    pub active_modules: ActiveModules,
     pub config: Config,
-    // terminal: Option<Terminal<B>>,
     msg: String,
 }
 
@@ -93,12 +81,9 @@ impl App {
             // terminal: None,
             route_stack: vec![Routes::Main],
             player: Player::new(),
-            radio: Player::new(),
-            radio_fs: RadioExplorer::new(),
             music_controller: MusicController {
                 state: ListState::default(),
             },
-            active_modules: ActiveModules::Fs,
             msg: "Welcome to RustPlayer".to_string(),
             config: Config::default(),
         })
@@ -120,7 +105,6 @@ impl App {
         thread::spawn(move || loop {
             thread::sleep(tick);
             let _ = sd.send(EventType::Player);
-            let _ = sd.send(EventType::Radio);
         });
         // start event
         let (evt_sender, evt_receiver) = mpsc::sync_channel(1);
@@ -186,10 +170,6 @@ impl App {
                 let player = &mut self.player;
                 player.tick();
             }
-            EventType::Radio => {
-                let radio = &mut self.radio;
-                radio.tick();
-            }
         }
     }
 
@@ -251,14 +231,9 @@ impl App {
                 let main_layout = Layout::default()
                     .direction(Direction::Horizontal)
                     .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
-                    // .margin(2)
                     .split(area);
                 // 左侧
-                if self.active_modules == ActiveModules::RadioList {
-                    draw_radio_list(self, frame, main_layout[0]);
-                } else {
-                    draw_fs_tree(self, frame, main_layout[0]);
-                }
+                draw_fs_tree(self, frame, main_layout[0]);
                 // 右侧
                 draw_music_board(self, frame, main_layout[1]);
             }

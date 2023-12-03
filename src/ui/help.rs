@@ -35,13 +35,6 @@ where
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(3), Constraint::Percentage(100)])
         .split(area);
-    let homepage_text =
-        Paragraph::new("Press <Enter> key to open author(KetaNetwork)'s home page.").block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded),
-        );
-    frame.render_widget(homepage_text, chunks[0]);
 
     let help_table = Table::new([
         Row::new(["h", "open or close this help."]),
@@ -74,5 +67,5 @@ where
     )
     .column_spacing(2)
     .widths(&[Constraint::Min(6), Constraint::Percentage(100)]);
-    frame.render_widget(help_table, chunks[1]);
+    frame.render_widget(help_table, chunks[0]);
 }

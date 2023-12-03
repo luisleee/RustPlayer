@@ -15,10 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with RustPlayer.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::ui::radio::RadioConfig;
 
 pub enum Source {
-    M3u8(RadioConfig),
     Local(String),
 }
 

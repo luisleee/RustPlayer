@@ -28,15 +28,10 @@ use std::{
     time::{Duration, Instant, SystemTime},
 };
 
-use m3u8_rs::{MediaPlaylist, Playlist};
 
 use rodio::cpal;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink, Source};
 use tui::widgets::ListState;
-
-use crate::util::lyrics::Lyrics;
-use crate::util::m3u8::empty_cache;
-use crate::{m3u8::download_m3u8_playlist, util::net::download_as_bytes};
 
 use super::media::Media;
 
@@ -54,8 +49,6 @@ pub struct PlayListItem {
     pub current_pos: Duration,
     pub status: PlayStatus,
     pub path: String,
-    pub lyrics: Lyrics,
-    pub lyrics_index: ListState,
 }
 
 pub struct PlayList {
@@ -93,12 +86,6 @@ pub trait Player {
     // 提供一个接口，用于更新player状态
     fn tick(&mut self);
 
-    // 当前歌词
-    fn current_lyric(&self) -> &str;
-
-    // 有歌词
-    fn has_lyrics(&self) -> bool;
-
     // 音量
     fn volume(&self) -> f32;
 
@@ -135,7 +122,6 @@ impl Player for MusicPlayer {
             stream,
             stream_handle,
             sink,
-            current_lyric: None,
             initialized: false,
         }
     }
@@ -145,7 +131,6 @@ impl Player for MusicPlayer {
             super::media::Source::Local(path) => {
                 return self.play_with_file(path, once);
             }
-            super::media::Source::M3u8(_path) => false,
         }
     }
 
@@ -190,7 +175,6 @@ impl Player for MusicPlayer {
                 self.sink.append(Decoder::new(buf_reader).unwrap());
                 self.play();
             }
-            // for
         } else {
             // no more sound to play
             return false;
@@ -260,14 +244,7 @@ impl Player for MusicPlayer {
                         // update status
                         self.current_time = now;
                         self.total_time = song.duration.clone();
-                        // add lyrics
-                        let selected_index = song.lyrics_index.selected().unwrap();
-                        if selected_index + 1 < song.lyrics.list.len() {
-                            let next_lyric = &song.lyrics.list[selected_index + 1];
-                            if self.current_time > next_lyric.time {
-                                song.lyrics_index.select(Some(selected_index + 1));
-                            }
-                        }
+                        
                     }
                 }
                 PlayStatus::Stopped(dur) => {
@@ -283,18 +260,6 @@ impl Player for MusicPlayer {
         }
     }
 
-    fn current_lyric(&self) -> &str {
-        if let Some(lyric) = &self.current_lyric {
-            return lyric.as_str();
-        } else {
-            return "No Lyrics";
-        }
-    }
-
-    fn has_lyrics(&self) -> bool {
-        !self.play_list.lists.is_empty()
-            && !self.play_list.lists.first().unwrap().lyrics.list.is_empty()
-    }
 
     fn volume(&self) -> f32 {
         return self.sink.volume();
@@ -343,8 +308,7 @@ impl MusicPlayer {
                 return false;
             }
         }
-        // find lyrics
-        let lyrics = Lyrics::from_music_path(path.as_str());
+
         // open
         match File::open(path.as_str()) {
             Ok(f) => {
@@ -367,8 +331,6 @@ impl MusicPlayer {
                     current_pos: Duration::from_secs(0),
                     status: PlayStatus::Waiting,
                     path: path.to_string_lossy().to_string(),
-                    lyrics,
-                    lyrics_index: state,
                 });
                 if !self.initialized {
                     self.initialized = true;
@@ -385,248 +347,5 @@ impl MusicPlayer {
 impl Drop for MusicPlayer {
     fn drop(&mut self) {
         // println!()
-    }
-}
-
-pub struct RadioItem {
-    list: MediaPlaylist,
-    url: String,
-}
-
-#[allow(dead_code)]
-pub struct RadioPlayer {
-    pub item: Option<RadioItem>,
-    pub list: Vec<PlayListItem>,
-    stream: OutputStream,
-    stream_handle: OutputStreamHandle,
-    sink: Sink,
-    is_playing: bool,
-    last_playing_id: i32,
-    data_tx: Sender<bytes::Bytes>,
-    data_rx: Receiver<bytes::Bytes>,
-    elasped: SystemTime,
-    gap: Duration,
-}
-
-impl Player for RadioPlayer {
-    fn new() -> Self {
-        let (stream, handle) = OutputStream::try_default().unwrap();
-        let sink = Sink::try_new(&handle).unwrap();
-        let (tx, rx) = channel();
-        empty_cache();
-        RadioPlayer {
-            item: None,
-            list: vec![],
-            stream,
-            stream_handle: handle,
-            sink,
-            is_playing: false,
-            last_playing_id: -1,
-            data_rx: rx,
-            data_tx: tx,
-            elasped: SystemTime::now(),
-            gap: Duration::from_secs(5),
-        }
-    }
-
-    fn add_to_list(&mut self, media: Media, _: bool) -> bool {
-        self.last_playing_id = -1;
-        let src = media.src;
-        match src {
-            super::media::Source::M3u8(url) => {
-                let (tx, rx) = channel();
-                let m3u8_url = url.url.clone();
-                thread::spawn(move || {
-                    let playlist = download_m3u8_playlist(m3u8_url);
-                    tx.send(playlist).unwrap();
-                });
-                match rx.recv_timeout(Duration::from_secs(5)) {
-                    Ok(list) => {
-                        if let Ok(playlist) = list {
-                            match playlist {
-                                Playlist::MasterPlaylist(_) => {}
-                                Playlist::MediaPlaylist(pl) => {
-                                    let item = RadioItem {
-                                        list: pl,
-                                        url: url.url.clone(),
-                                    };
-                                    self.item = Some(item);
-                                    self.download_and_push();
-                                    self.play();
-                                }
-                            }
-                            return true;
-                        }
-                    }
-                    Err(_err) => {
-                        // ignore
-                    }
-                }
-                false
-            }
-            super::media::Source::Local(_) => false,
-        }
-    }
-
-    fn play(&mut self) -> bool {
-        self.sink.play();
-        self.is_playing = true;
-        true
-    }
-
-    fn next(&mut self) -> bool {
-        false
-    }
-
-    fn stop(&mut self) -> bool {
-        self.sink.stop();
-        true
-    }
-
-    fn pause(&mut self) -> bool {
-        self.sink.pause();
-        self.is_playing = false;
-        true
-    }
-
-    fn resume(&mut self) -> bool {
-        self.sink.play();
-        self.is_playing = true;
-        true
-    }
-
-    fn get_progress(&self) -> (f32, f32) {
-        return (0.0, 0.0);
-    }
-
-    fn is_playing(&self) -> bool {
-        self.is_playing
-    }
-
-    fn tick(&mut self) {
-        match self.data_rx.try_recv() {
-            Ok(data) => {
-                // let f = File::open("D:\\audio.wav").unwrap();
-                let mut cache_dir = dirs::cache_dir().unwrap();
-                cache_dir.push("RustPlayer");
-                std::fs::create_dir_all(cache_dir.clone()).unwrap();
-                let timestamp = SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap();
-                let fname = timestamp.as_nanos().to_string();
-                cache_dir.push(fname.as_str());
-                let mut f = File::create(cache_dir.clone()).unwrap();
-                f.write_all(data.as_ref()).unwrap();
-                let decoder = ffmpeg_decoder::Decoder::open(cache_dir);
-                // let buffer = BufReader::new(f);
-                // let decoder = rodio::Decoder::new_mp4(buffer, rodio::decoder::Mp4Type::M4a);
-                // Decoder::
-                match decoder {
-                    Ok(dec) => {
-                        self.sink.append(dec);
-                    }
-                    Err(err) => {
-                        eprintln!("{:?}", err);
-                    }
-                }
-            }
-            Err(_) => {}
-        }
-        // check length
-        if let Ok(elapsed) = self.elasped.elapsed() {
-            // 过了gap时间重新拉取m3u8
-            if self.is_playing() && elapsed.as_secs() > self.gap.as_secs() {
-                self.download_and_push();
-            }
-        }
-    }
-
-    fn current_lyric(&self) -> &str {
-        return "";
-    }
-
-    fn has_lyrics(&self) -> bool {
-        false
-    }
-
-    fn volume(&self) -> f32 {
-        self.sink.volume()
-    }
-
-    fn set_volume(&mut self, new_volume: f32) -> bool {
-        self.sink.set_volume(new_volume);
-        true
-    }
-}
-
-impl RadioPlayer {
-    /// 触发下载
-    fn download_and_push(&mut self) {
-        self.elasped = SystemTime::now();
-        // 第一次下载，直接全部下载
-        if self.last_playing_id == -1 {
-            // 直接全部下载
-            let item = &self.item;
-            if let Some(radio) = item {
-                let index = radio.url.clone().rfind("/").unwrap();
-                let base_url = radio.url.as_str()[0..index + 1].to_string();
-                let tx_clone = self.data_tx.clone();
-                let urls: Vec<String> = radio
-                    .list
-                    .segments
-                    .iter()
-                    .map(|e| e.uri.clone())
-                    .map(|uri| base_url.clone() + &uri)
-                    .collect();
-                self.last_playing_id =
-                    radio.list.media_sequence + max((radio.list.segments.len() - 1) as i32, 0);
-                thread::spawn(move || {
-                    for url in urls {
-                        match download_as_bytes(url.as_str(), &tx_clone) {
-                            _ => {
-                                // println!("{:?} downloaded",url);
-                            }
-                        }
-                    }
-                });
-            }
-        } else {
-            // 更新playlist列表
-            if let Some(radio) = &self.item {
-                let index = radio.url.clone().rfind("/").unwrap();
-                let base_url = radio.url.as_str()[0..index + 1].to_string();
-                match download_m3u8_playlist(radio.url.clone()) {
-                    Ok(playlist) => match playlist {
-                        Playlist::MasterPlaylist(_) => todo!(),
-                        Playlist::MediaPlaylist(media_playlist) => {
-                            let seq = media_playlist.media_sequence;
-                            let skip_num = max(self.last_playing_id - seq + 1, 0) as usize;
-                            let segs = &media_playlist.segments[skip_num..];
-                            // println!("add {:?}",segs);
-                            let urls: Vec<String> = segs
-                                .iter()
-                                .map(|e| e.uri.clone())
-                                .map(|uri| base_url.clone() + &uri)
-                                .collect();
-                            self.last_playing_id =
-                                seq + max((media_playlist.segments.len() - 1) as i32, 0);
-                            let tx_clone = self.data_tx.clone();
-                            thread::spawn(move || {
-                                for url in urls {
-                                    match download_as_bytes(url.as_str(), &tx_clone) {
-                                        _ => {
-                                            // println!("update {:?}",url);
-                                        }
-                                    }
-                                }
-                            });
-                        }
-                    },
-                    Err(_) => {
-                        // ignore
-                    }
-                }
-            }
-        }
     }
 }

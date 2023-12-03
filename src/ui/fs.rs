@@ -29,7 +29,6 @@ use tui::text::Text;
 use tui::widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph, Wrap};
 use tui::Frame;
 
-use crate::app::ActiveModules;
 use crate::App;
 
 #[allow(dead_code)]
@@ -62,7 +61,7 @@ impl FsExplorer {
             dirs: vec![],
             index: list_state,
             on_error_msg_callback: callback,
-            accept_suffix: vec!["mp3", "wav", "flac", "ts"],
+            accept_suffix: vec!["mp3", "wav", "flac"],
         };
         let (dirs, files) = exp.visit_dir(path_str)?;
         exp.files = files;
@@ -171,9 +170,9 @@ where
         .title_alignment(Alignment::Center)
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded);
-    if app.active_modules == ActiveModules::Fs {
-        blk = blk.border_style(Style::default().fg(Color::Cyan));
-    }
+    
+    blk = blk.border_style(Style::default().fg(Color::Cyan));
+
     let file_list = List::new(items)
         .block(blk)
         .highlight_style(Style::default().bg(Color::Cyan))

@@ -18,12 +18,9 @@
 pub mod effects;
 pub mod fs;
 pub mod help;
-pub mod music_board;
 pub mod play_list;
 pub mod progress;
-pub mod radio;
 
 pub enum EventType {
     Player,
-    Radio,
 }

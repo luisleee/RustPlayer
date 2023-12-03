@@ -38,23 +38,3 @@ pub fn handle_player(app: &mut App, code: KeyCode) -> bool {
         }
     }
 }
-
-pub fn handle_radio(app: &mut App, code: KeyCode) -> bool {
-    match code {
-        KeyCode::Char('-') => {
-            let volume = app.radio.volume() - 0.05;
-            let new_volume = volume.max(0.0);
-            app.radio.set_volume(new_volume);
-            return true;
-        }
-        KeyCode::Char('=') | KeyCode::Char('+') => {
-            let volume = app.radio.volume() + 0.05;
-            let new_volume = volume.min(1.0);
-            app.radio.set_volume(new_volume);
-            return true;
-        }
-        _ => {
-            return false;
-        }
-    }
-}

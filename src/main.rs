@@ -18,14 +18,13 @@
 use app::*;
 
 use ui::*;
-use util::*;
 
 mod app;
 mod config;
 mod handler;
 mod media;
 mod ui;
-mod util;
+
 
 fn main() {
     let mut app = App::new().unwrap();
