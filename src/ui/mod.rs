@@ -21,6 +21,7 @@ pub mod help;
 pub mod play_list;
 pub mod progress;
 pub mod music_board;
+pub mod gap;
 
 pub enum EventType {
     Player,

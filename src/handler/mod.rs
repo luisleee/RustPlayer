@@ -31,7 +31,7 @@ mod help;
 mod music_controller;
 mod player;
 mod repetition;
-
+mod gap;
 
 pub fn handle_routes(app: &mut App, key: KeyCode) -> bool {
     match key {
@@ -68,6 +68,14 @@ pub fn handle_keyboard_event(app: &mut App, key: KeyCode) {
                 return;
             }
             flag = handle_music_controller(app, key);
+            if flag {
+                return;
+            }
+            flag = handle_repetition(app, key);
+            if flag {
+                return;
+            }
+            flag = handle_gap(app, key);
             if flag {
                 return;
             }
