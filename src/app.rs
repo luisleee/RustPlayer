@@ -19,7 +19,6 @@ use std::{
     io::stdout,
     sync::mpsc,
     thread::{self},
-    vec,
 };
 
 use crossterm::{
@@ -44,8 +43,8 @@ use crate::{
     media::player::{MusicPlayer, Player},
     ui::{
         fs::draw_fs_tree,
-        help::draw_help,
         music_board::draw_music_board,
+        music_board::MusicController,
         EventType,
     },
 };
@@ -53,18 +52,9 @@ use crate::{
 pub enum InputMode {
     Normal,
 }
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum Routes {
-    Main,
-    Help,
-}
-
-
 pub struct App {
     pub mode: InputMode,
     pub fs: FsExplorer,
-    pub route_stack: Vec<Routes>,
     pub player: MusicPlayer,
     pub music_controller: MusicController,
     pub config: Config,
@@ -79,7 +69,6 @@ impl App {
                 eprintln!("{}", err);
             }))
             .ok()?,
-            route_stack: vec![Routes::Main],
             player: Player::new(),
             music_controller: MusicController {
                 state: ListState::default(),
@@ -116,7 +105,6 @@ impl App {
                         match self.mode {
                             InputMode::Normal => match key.code {
                                 KeyCode::Char('q') | KeyCode::Char('Q') => {
-                                    empty_cache();
                                     drop(evt_sender);
                                     let _ = exit_sender.send(());
                                     return;
@@ -183,20 +171,8 @@ impl App {
                 .margin(4)
                 .constraints([Constraint::Length(3), Constraint::Percentage(100)].as_ref())
                 .split(size);
-            if self.route_stack.is_empty() {
-                self.route_stack.push(Routes::Main);
-            }
-            let route = self.route_stack.last().unwrap();
-            match route {
-                Routes::Main => {
-                    self.draw_header(frame, chunks[0]);
-                    self.draw_body(frame, chunks[1]).unwrap();
-                }
-                Routes::Help => {
-                    self.draw_header(frame, chunks[0]);
-                    draw_help(self, frame, chunks[1]);
-                }
-            }
+            self.draw_header(frame, chunks[0]);
+            self.draw_body(frame, chunks[1]).unwrap();
         })?;
         Ok(())
     }
@@ -224,22 +200,14 @@ impl App {
     where
         B: Backend,
     {
-        let route = self.route_stack.first().unwrap();
-        match route {
-            Routes::Main => {
-                let main_layout = Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
-                    .split(area);
-                // 左侧
-                draw_fs_tree(self, frame, main_layout[0]);
-                // 右侧
-                draw_music_board(self, frame, main_layout[1]);
-            }
-            Routes::Help => {
-                draw_help(self, frame, area);
-            }
-        }
+        let main_layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
+            .split(area);
+        // 左侧
+        draw_fs_tree(self, frame, main_layout[0]);
+        // 右侧
+        draw_music_board(self, frame, main_layout[1]);
         Ok(())
     }
 

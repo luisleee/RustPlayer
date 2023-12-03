@@ -17,7 +17,6 @@
 
 pub mod repetition;
 pub mod fs;
-pub mod help;
 pub mod play_list;
 pub mod progress;
 pub mod music_board;

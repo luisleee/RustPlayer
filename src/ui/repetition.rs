@@ -1,7 +1,7 @@
 use tui::{
     backend::Backend,
     layout::{Alignment, Rect},
-    widgets::{Block, BorderType, Borders, List, ListItem},
+    widgets::{Block, BorderType, Borders, Paragraph},
     Frame,
 };
 
@@ -11,9 +11,9 @@ pub fn draw_repeat<B>(app: &mut App, frame: &mut Frame<B>, area: Rect)
 where
     B: Backend,
 {
-    let player = app.player;
+    let player = &app.player;
     let rep = player.repetition;
-    let s = format!("x{:}", rep);
+    let s = format!("(1)◄ x{:} ►(2)", rep);
     let text = Paragraph::new(s)
         .block(
             Block::default()
@@ -21,6 +21,6 @@ where
                 .border_type(BorderType::Rounded)
                 .title("Repeat")
                 .title_alignment(Alignment::Center),
-        )
-        .style(Style::default().add_modifier(Modifier::SLOW_BLINK));
+        );
+    frame.render_widget(text, area);
 }

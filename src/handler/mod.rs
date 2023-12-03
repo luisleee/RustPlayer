@@ -17,48 +17,25 @@
 
 use crossterm::event::KeyCode;
 
-use crate::app::{App, Routes};
+use crate::app::App;
 
 use self::{
     fs::handle_fs,
-    help::handle_help,
-    music_controller::{handle_music_controller},
-    player::{handle_player},
+    music_controller::handle_music_controller,
+    player::handle_player,
+    gap::handle_gap,
+    repetition::handle_repetition,
 };
 
 mod fs;
-mod help;
 mod music_controller;
 mod player;
 mod repetition;
 mod gap;
 
-pub fn handle_routes(app: &mut App, key: KeyCode) -> bool {
-    match key {
-        KeyCode::Char('h') | KeyCode::Char('H') => {
-            if let Some(page) = app.route_stack.last() {
-                match page {
-                    Routes::Main => {
-                        app.route_stack.push(Routes::Help);
-                    }
-                    Routes::Help => {
-                        app.route_stack.pop();
-                    }
-                }
-            }
-            return true;
-        }
-        _ => {}
-    }
-    false
-}
-
 pub fn handle_keyboard_event(app: &mut App, key: KeyCode) {
     let mut flag;
-    let top_route = app.route_stack.last().unwrap();
-
-    match top_route {
-        Routes::Main => {
+    
             flag = handle_fs(app, key);
             if flag {
                 return;
@@ -79,16 +56,5 @@ pub fn handle_keyboard_event(app: &mut App, key: KeyCode) {
             if flag {
                 return;
             }
-        }
-        Routes::Help => {
-            flag = handle_help(app, key);
-            if flag {
-                return;
-            }
-        }
-    }
-    flag = handle_routes(app, key);
-    if flag {
-        return;
-    }
+        
 }

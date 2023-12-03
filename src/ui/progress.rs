@@ -42,19 +42,19 @@ where
     let total_secs = total_time.as_secs() % 60;
     let mut percent = 0.0;
     if total_time.as_secs() != 0 {
-        percent = if player.is_playing() {
+        percent = if player.is_playing() || player.is_paused() {
             current_time.as_secs_f64() / total_time.as_secs_f64()
         } else {
             0.0
         };
     }
-    let s = if player.is_playing() {
+    let s = if player.is_playing() || player.is_paused() {
         format!(
             "{:0>2}:{:0>2} / {:0>2}:{:0>2}",
             minute_mins, minute_secs, total_mins, total_secs
         )
     } else {
-        "No More Sound".to_string()
+        "Not Playing".to_string()
     };
 
     let gauge = LineGauge::default()

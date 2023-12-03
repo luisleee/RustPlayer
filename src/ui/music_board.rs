@@ -27,7 +27,7 @@ use tui::{
 
 use crate::{app::App, media::player::Player};
 
-use super::{play_list::draw_play_list, progress::draw_progress, repetition::draw_repeat};
+use super::{play_list::draw_play_list, progress::draw_progress, repetition::draw_repeat, gap::draw_gap};
 
 pub struct MusicController {
     pub state: ListState,
@@ -55,7 +55,14 @@ where
         .split(main_layout_chunks[1]);
 
     draw_play_list(app, frame, mid_layout_chunks[1]);
-    draw_repeat(app, frame, main_layout_chunks[2]);
+    let repeat_delay_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(main_layout_chunks[2]);
+    draw_repeat(app, frame, repeat_delay_chunks[0]);
+    draw_gap(app, frame, repeat_delay_chunks[1]);
+
+    
     draw_progress(app, frame, main_layout_chunks[3]);
 }
 
@@ -66,7 +73,7 @@ where
     let player = &app.player;
     let main_layout_chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
+        .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
         .split(area);
 
     let playing_text;
@@ -87,13 +94,13 @@ where
 
     let sub_layout = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
+        .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
         .split(main_layout_chunks[0]);
 
     let sound_volume_percent = app.player.volume();
     let bar = LineGauge::default()
         .ratio(sound_volume_percent.into())
-        .label("VOL")
+        .label("VOL(-/+)")
         .line_set(symbols::line::THICK)
         .block(
             Block::default()
@@ -109,16 +116,14 @@ where
 
     frame.render_widget(text, sub_layout[0]);
     frame.render_widget(bar, sub_layout[1]);
-    let mut p = Paragraph::new(vec![Spans::from("▶(s) >>|(n) EXT(q) HLP(h)")])
+
+    let mut p = Paragraph::new(vec![Spans::from("⏯️(s) ⏭️(n)")])
         .style(Style::default())
         .alignment(Alignment::Center);
-    if player.is_playing() {
-        p = Paragraph::new(vec![Spans::from("||(s) >>|(n) EXT(q) HELP(h)")])
-            .alignment(Alignment::Center);
-    }
+    
     let blk = Block::default()
         .borders(Borders::ALL)
-        .title("Panel")
+        .title("Help")
         .border_type(BorderType::Rounded)
         .title_alignment(Alignment::Center);
 

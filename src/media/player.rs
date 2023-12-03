@@ -15,17 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with RustPlayer.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::cmp::max;
-
-use std::sync::mpsc::{Receiver, Sender};
 use std::{
     fs::File,
-    io::{BufReader, Write},
+    io::BufReader,
     ops::Add,
     path::Path,
-    sync::mpsc::channel,
-    thread,
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, Instant},
 };
 
 
@@ -84,6 +79,8 @@ pub trait Player {
     // 是否正在播放
     fn is_playing(&self) -> bool;
 
+    fn is_paused(&self) -> bool;
+
     // 提供一个接口，用于更新player状态
     fn tick(&mut self);
 
@@ -94,6 +91,8 @@ pub trait Player {
     fn set_volume(&mut self, new_volume: f32) -> bool;
 
     fn adjust_repetition(&mut self, plus: bool) -> bool;
+
+    fn adjust_gap(&mut self, inc: f32) -> bool;
 }
 
 pub struct MusicPlayer {
@@ -105,7 +104,9 @@ pub struct MusicPlayer {
     stream_handle: OutputStreamHandle,
     sink: Sink,
     initialized: bool,
+    pub during_gap: bool,
     pub repetition: i32,
+    pub gap: f32,
 }
 
 impl Player for MusicPlayer {
@@ -123,7 +124,9 @@ impl Player for MusicPlayer {
             stream_handle,
             sink,
             initialized: false,
+            during_gap: false,
             repetition: 1,
+            gap: 0.0,
         }
     }
 
@@ -154,15 +157,18 @@ impl Player for MusicPlayer {
 
     fn next(&mut self) -> bool {
         let len = self.play_list.lists.len();
+        
         if len >= 1 {
             if self.play_list.lists.first().unwrap().repetition > 1 {
-                let mut top = self.play_list.lists.first().unwrap();
+                let mut top = self.play_list.lists.first_mut().unwrap();
                 top.repetition = top.repetition - 1;
-                self.play_list.lists.insert(0, top);
+                top.status = PlayStatus::Playing(Instant::now(), Duration::from_nanos(0));
+                self.during_gap = true;
             } else {
                 self.play_list.lists.remove(0);
+                self.stop();
             }
-            self.stop();
+            
             if !self.play_list.lists.is_empty() {
                 // next song
                 let top_music = self.play_list.lists.first().unwrap();
@@ -175,6 +181,7 @@ impl Player for MusicPlayer {
                 self.sink = Sink::try_new(&self.stream_handle).unwrap();
                 self.set_volume(volume);
                 self.sink.append(Decoder::new(buf_reader).unwrap());
+                self.during_gap = true;
                 self.play();
             }
         } else {
@@ -227,6 +234,10 @@ impl Player for MusicPlayer {
         return self.initialized && !self.sink.is_paused() && !self.play_list.lists.is_empty();
     }
 
+    fn is_paused(&self) -> bool {
+        return self.initialized && self.sink.is_paused();
+    }
+
     fn tick(&mut self) {
         let is_playing = self.is_playing();
         if let Some(song) = self.play_list.lists.first_mut() {
@@ -235,18 +246,29 @@ impl Player for MusicPlayer {
                 PlayStatus::Waiting => {
                     if is_playing {
                         *status = PlayStatus::Playing(Instant::now(), Duration::from_nanos(0));
+                        self.during_gap = true;
                     }
                 }
                 PlayStatus::Playing(instant, duration) => {
                     let now = instant.elapsed().add(duration.clone());
-                    if now.ge(&song.duration) {
-                        // next song, delete 0
-                        self.next();
+
+                    if self.during_gap {
+                        if now.ge(&Duration::from_secs_f32(self.gap)){
+                            self.during_gap = false;
+                            *status = PlayStatus::Playing(Instant::now(), Duration::from_nanos(0));
+                            self.play();
+                        } else {
+                            self.sink.pause();
+                        }
                     } else {
-                        // update status
-                        self.current_time = now;
-                        self.total_time = song.duration.clone();
-                        
+                        if now.ge(&song.duration) {
+                            // next song
+                            self.next();
+                        } else {
+                            // update status
+                            self.current_time = now;
+                            self.total_time = song.duration.clone();
+                        }
                     }
                 }
                 PlayStatus::Stopped(dur) => {
@@ -277,6 +299,16 @@ impl Player for MusicPlayer {
             self.repetition = self.repetition + 1;
         } else if self.repetition > 1 {
             self.repetition = self.repetition - 1
+        }
+        for item in &mut self.play_list.lists {
+            item.repetition = self.repetition;
+        }
+        true
+    }
+
+    fn adjust_gap(&mut self, inc: f32) -> bool {
+        if self.gap + inc >= 0.0 {
+            self.gap = self.gap + inc;
         }
         true
     }
@@ -347,6 +379,7 @@ impl MusicPlayer {
                 if !self.initialized {
                     self.initialized = true;
                 }
+                self.during_gap = false;
                 self.play();
                 self.tick();
                 return true;
