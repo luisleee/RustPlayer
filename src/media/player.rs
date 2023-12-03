@@ -49,6 +49,7 @@ pub struct PlayListItem {
     pub current_pos: Duration,
     pub status: PlayStatus,
     pub path: String,
+    pub repetition: i32,
 }
 
 pub struct PlayList {
@@ -91,6 +92,8 @@ pub trait Player {
 
     // 设置音量
     fn set_volume(&mut self, new_volume: f32) -> bool;
+
+    fn adjust_repetition(&mut self, plus: bool) -> bool;
 }
 
 pub struct MusicPlayer {
@@ -98,13 +101,11 @@ pub struct MusicPlayer {
     pub current_time: Duration,
     pub total_time: Duration,
     pub play_list: PlayList,
-    // media: Media,
-    // stream
     stream: OutputStream,
     stream_handle: OutputStreamHandle,
     sink: Sink,
-    current_lyric: Option<String>,
     initialized: bool,
+    pub repetition: i32,
 }
 
 impl Player for MusicPlayer {
@@ -118,11 +119,11 @@ impl Player for MusicPlayer {
             current_time: Duration::from_secs(0),
             total_time: Duration::from_secs(0),
             play_list: PlayList { lists: vec![] },
-            // media: f,
             stream,
             stream_handle,
             sink,
             initialized: false,
+            repetition: 1,
         }
     }
 
@@ -133,11 +134,6 @@ impl Player for MusicPlayer {
             }
         }
     }
-
-    // fn next(&mut self) -> bool {
-    //     // self._sink.
-    //     true
-    // }
 
     fn play(&mut self) -> bool {
         self.sink.play();
@@ -159,7 +155,13 @@ impl Player for MusicPlayer {
     fn next(&mut self) -> bool {
         let len = self.play_list.lists.len();
         if len >= 1 {
-            self.play_list.lists.remove(0);
+            if self.play_list.lists.first().unwrap().repetition > 1 {
+                let mut top = self.play_list.lists.first().unwrap();
+                top.repetition = top.repetition - 1;
+                self.play_list.lists.insert(0, top);
+            } else {
+                self.play_list.lists.remove(0);
+            }
             self.stop();
             if !self.play_list.lists.is_empty() {
                 // next song
@@ -269,6 +271,15 @@ impl Player for MusicPlayer {
         self.sink.set_volume(new_volume);
         true
     }
+
+    fn adjust_repetition(&mut self, plus: bool) -> bool {
+        if plus {
+            self.repetition = self.repetition + 1;
+        } else if self.repetition > 1 {
+            self.repetition = self.repetition - 1
+        }
+        true
+    }
 }
 
 impl MusicPlayer {
@@ -331,6 +342,7 @@ impl MusicPlayer {
                     current_pos: Duration::from_secs(0),
                     status: PlayStatus::Waiting,
                     path: path.to_string_lossy().to_string(),
+                    repetition: self.repetition,
                 });
                 if !self.initialized {
                     self.initialized = true;

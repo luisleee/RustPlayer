@@ -15,11 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with RustPlayer.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod effects;
+pub mod repetition;
 pub mod fs;
 pub mod help;
 pub mod play_list;
 pub mod progress;
+pub mod music_board;
 
 pub enum EventType {
     Player,

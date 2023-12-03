@@ -45,6 +45,7 @@ use crate::{
     ui::{
         fs::draw_fs_tree,
         help::draw_help,
+        music_board::draw_music_board,
         EventType,
     },
 };
@@ -78,7 +79,6 @@ impl App {
                 eprintln!("{}", err);
             }))
             .ok()?,
-            // terminal: None,
             route_stack: vec![Routes::Main],
             player: Player::new(),
             music_controller: MusicController {
@@ -95,7 +95,6 @@ impl App {
         execute!(stdout, EnterAlternateScreen)?;
         let backend = CrosstermBackend::new(stdout);
         let mut terminal = Terminal::new(backend)?;
-        // execute!(terminal.backend_mut(), EnableMouseCapture);
         enable_raw_mode()?;
         terminal.hide_cursor()?;
         self.draw_frame(&mut terminal)?;
