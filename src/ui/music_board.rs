@@ -20,8 +20,7 @@ use tui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     symbols::{self},
-    text::Spans,
-    widgets::{Block, BorderType, Borders, LineGauge, ListState, Paragraph},
+    widgets::{Block, BorderType, Borders, LineGauge, ListState, Paragraph, Row, Table},
     Frame,
 };
 
@@ -40,30 +39,60 @@ where
     let main_layout_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
+            Constraint::Percentage(80),
             Constraint::Length(3),
-            Constraint::Percentage(60),
-            Constraint::Percentage(20),
             Constraint::Percentage(20),
         ])
         .split(area);
 
-    draw_header(app, frame, main_layout_chunks[0]);
-
-    let mid_layout_chunks = Layout::default()
+    let top_layout_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
-        .split(main_layout_chunks[1]);
+        .split(main_layout_chunks[0]);
+    
+    let middle_layout_chunks = Layout::default()
+    .direction(Direction::Vertical)
+    .constraints([
+        Constraint::Length(3),
+        Constraint::Percentage(100),
+    ])
+    .split(top_layout_chunks[0]);
+    draw_header(app, frame, middle_layout_chunks[0]);
+    let help_table = Table::new([
+        Row::new(["->", "add to playlist"]),
+        Row::new(["Enter","select/play all",]),
+        Row::new(["Space", "pause/resume"]),
+        Row::new(["Esc", "parent folder"]),
+        Row::new(["n", "next"]),
+        Row::new(["q", "quit"]),
+        Row::new(["c", "clear list"]),
+        Row::new(["↑/↓", "change selected index"]),
+    ])
+    .header(
+        Row::new(vec!["Key", "Function"])
+            .style(Style::default().fg(Color::White))
+            .bottom_margin(1),
+    )
+    .block(
+        Block::default()
+            .title("Help")
+            .border_type(BorderType::Rounded)
+            .borders(Borders::ALL),
+    )
+    .column_spacing(2)
+    .widths(&[Constraint::Min(6), Constraint::Percentage(100)]);
+    frame.render_widget(help_table, middle_layout_chunks[1]);
 
-    draw_play_list(app, frame, mid_layout_chunks[1]);
-    let repeat_delay_chunks = Layout::default()
+    draw_play_list(app, frame, top_layout_chunks[1]);
+
+    let bottom_layout_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(main_layout_chunks[2]);
-    draw_repeat(app, frame, repeat_delay_chunks[0]);
-    draw_gap(app, frame, repeat_delay_chunks[1]);
+        .split(main_layout_chunks[1]);
+    draw_repeat(app, frame, bottom_layout_chunks[0]);
+    draw_gap(app, frame, bottom_layout_chunks[1]);
 
-    
-    draw_progress(app, frame, main_layout_chunks[3]);
+    draw_progress(app, frame, main_layout_chunks[2]);
 }
 
 pub fn draw_header<B>(app: &mut App, frame: &mut Frame<B>, area: Rect)
@@ -73,32 +102,29 @@ where
     let player = &app.player;
     let main_layout_chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
+        .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
         .split(area);
 
-    let playing_text;
-    if let Some(item) = player.playing_song() {
-        playing_text = String::from(item.name.as_str());
+    let playing_text = if let Some(item) = player.playing_song() {
+        String::from(item.name.as_str())
     } else {
-        playing_text = String::from("None");
-    }
-    let text = Paragraph::new(playing_text)
+        String::from("None")
+    };
+
+    let mut text = Paragraph::new(playing_text)
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
                 .title("Now Playing")
                 .title_alignment(Alignment::Center),
-        )
-        .style(Style::default().add_modifier(Modifier::SLOW_BLINK));
-
-    let sub_layout = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
-        .split(main_layout_chunks[0]);
+        );
+    if player.is_playing() {
+        text = text.style(Style::default().add_modifier(Modifier::SLOW_BLINK));
+    };
 
     let sound_volume_percent = app.player.volume();
-    let bar = LineGauge::default()
+    let volume = LineGauge::default()
         .ratio(sound_volume_percent.into())
         .label("VOL(-/+)")
         .line_set(symbols::line::THICK)
@@ -114,19 +140,6 @@ where
                 .add_modifier(Modifier::BOLD),
         );
 
-    frame.render_widget(text, sub_layout[0]);
-    frame.render_widget(bar, sub_layout[1]);
-
-    let mut p = Paragraph::new(vec![Spans::from("⏯️(s) ⏭️(n)")])
-        .style(Style::default())
-        .alignment(Alignment::Center);
-    
-    let blk = Block::default()
-        .borders(Borders::ALL)
-        .title("Help")
-        .border_type(BorderType::Rounded)
-        .title_alignment(Alignment::Center);
-
-    p = p.block(blk);
-    frame.render_widget(p, main_layout_chunks[1]);
+    frame.render_widget(text, main_layout_chunks[0]);
+    frame.render_widget(volume, main_layout_chunks[1]);
 }

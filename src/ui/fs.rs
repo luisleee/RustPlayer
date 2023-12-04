@@ -118,11 +118,12 @@ impl FsExplorer {
             }
         }
         dir_entries.sort_by(|item1, item2| {
-            return alphanumeric_sort::compare_str(item1.file_name(), item2.file_name());
+            return alphanumeric_sort::compare_os_str(item1.file_name(), item2.file_name());
         });
         file_entries.sort_by(|item1, item2| {
-            return alphanumeric_sort::compare_str(item1.file_name(), item2.file_name());
+            return alphanumeric_sort::compare_os_str(item1.file_name(), item2.file_name());
         });
+        
         Ok((dir_entries, file_entries))
     }
 }

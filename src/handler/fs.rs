@@ -56,7 +56,7 @@ fn add_media_to_player(app: &mut App, once: bool) -> bool {
                 }
             }
             fse.refresh();
-            return true;
+            true
         } else {
             // 文件
             let entry = &fse.files[selected - fse.dirs.len() - 1];
@@ -85,11 +85,11 @@ fn add_media_to_player(app: &mut App, once: bool) -> bool {
                 let msg = format!("Start playing");
                 app.set_msg(&msg);
             }
-            return res;
+            res
         }
     } else {
         fse.index.select(Some(0));
-        return false;
+        false
     }
 }
 
@@ -126,6 +126,21 @@ pub fn handle_fs(app: &mut App, key: KeyCode) -> bool {
         }
         KeyCode::Enter => {
             add_media_to_player(app, true);
+        }
+        KeyCode::Esc => {
+            let dir = current_dir().unwrap();
+            match dir.parent() {
+                Some(dir) => {
+                    set_current_dir(dir).unwrap();
+                    fse.current_path = dir.to_string_lossy().to_string();
+                    fse.index.select(Some(0));
+                }
+                None => {
+                    return false;
+                }
+            }
+            fse.refresh();
+            return true;
         }
         _ => {}
     }

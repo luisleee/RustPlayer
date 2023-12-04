@@ -13,7 +13,7 @@ where
 {
     let player = &app.player;
     let gap = player.gap;
-    let s = format!("(g)◄ {:.1} s ►(h)", gap);
+    let s = format!("(j)◄ {:.1} s ►(k)", gap);
     let text = Paragraph::new(s)
         .block(
             Block::default()

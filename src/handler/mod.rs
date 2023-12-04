@@ -34,27 +34,19 @@ mod repetition;
 mod gap;
 
 pub fn handle_keyboard_event(app: &mut App, key: KeyCode) {
-    let mut flag;
-    
-            flag = handle_fs(app, key);
-            if flag {
-                return;
-            }
-            flag = handle_player(app, key);
-            if flag {
-                return;
-            }
-            flag = handle_music_controller(app, key);
-            if flag {
-                return;
-            }
-            flag = handle_repetition(app, key);
-            if flag {
-                return;
-            }
-            flag = handle_gap(app, key);
-            if flag {
-                return;
-            }
-        
+    if handle_fs(app, key) {
+        return;
+    }
+    if handle_player(app, key) {
+        return;
+    }
+    if handle_music_controller(app, key) {
+        return;
+    }
+    if handle_repetition(app, key) {
+        return;
+    }
+    if handle_gap(app, key) {
+        return;
+    }
 }

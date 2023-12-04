@@ -22,7 +22,7 @@ use crate::{app::App, media::player::Player};
 pub fn handle_music_controller(app: &mut App, code: KeyCode) -> bool {
     let player = &mut app.player;
     match code {
-        KeyCode::Char('s') | KeyCode::Char('S') => {
+        KeyCode::Char(' ') => {
             if player.is_playing() {
                 player.pause();
             } else {
@@ -32,6 +32,10 @@ pub fn handle_music_controller(app: &mut App, code: KeyCode) -> bool {
         }
         KeyCode::Char('n') | KeyCode::Char('N') => {
             player.next();
+            return true;
+        }
+        KeyCode::Char('c') | KeyCode::Char('C') => {
+            player.clear_list();
             return true;
         }
         _ => {

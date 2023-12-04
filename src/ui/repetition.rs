@@ -13,7 +13,7 @@ where
 {
     let player = &app.player;
     let rep = player.repetition;
-    let s = format!("(1)◄ x{:} ►(2)", rep);
+    let s = format!("(g)◄ x{:} ►(h)", rep);
     let text = Paragraph::new(s)
         .block(
             Block::default()

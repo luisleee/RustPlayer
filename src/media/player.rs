@@ -23,7 +23,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-
 use rodio::cpal;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink, Source};
 use tui::widgets::ListState;
@@ -57,6 +56,8 @@ pub trait Player {
 
     // 添加歌曲
     fn add_to_list(&mut self, media: Media, once: bool) -> bool;
+
+    fn clear_list(&mut self) -> bool;
 
     // 播放
     fn play(&mut self) -> bool;
@@ -136,6 +137,11 @@ impl Player for MusicPlayer {
                 return self.play_with_file(path, once);
             }
         }
+    }
+
+    fn clear_list(&mut self) -> bool {
+        self.play_list.lists.clear();
+        true
     }
 
     fn play(&mut self) -> bool {
@@ -284,7 +290,6 @@ impl Player for MusicPlayer {
         }
     }
 
-
     fn volume(&self) -> f32 {
         return self.sink.volume();
     }
@@ -364,7 +369,7 @@ impl MusicPlayer {
                     let buf_reader = BufReader::new(f);
                     let sink = self.stream_handle.play_once(buf_reader).unwrap();
                     self.sink = sink;
-                    self.play_list.lists.clear();
+                    self.clear_list();
                 }
                 let mut state = ListState::default();
                 state.select(Some(0));
