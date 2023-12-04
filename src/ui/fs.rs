@@ -29,6 +29,8 @@ use tui::text::Text;
 use tui::widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph, Wrap};
 use tui::Frame;
 
+use alphanumeric_sort;
+
 use crate::App;
 
 #[allow(dead_code)]
@@ -92,15 +94,14 @@ impl FsExplorer {
                         Ok(entry) => {
                             for accept_suffix in self.accept_suffix.iter() {
                                 let path = entry.path();
-                                // println!("{:?}", path.display());
-                                if let Some(ext) = path.extension() {
+                                if path.is_dir() {
+                                    dir_entries.push(entry);
+                                    break;
+                                } else if let Some(ext) = path.extension() {
                                     if ext.to_string_lossy().ends_with(accept_suffix) {
                                         file_entries.push(entry);
                                         break;
                                     }
-                                } else if path.is_dir() {
-                                    dir_entries.push(entry);
-                                    break;
                                 }
                             }
                         }
@@ -117,10 +118,10 @@ impl FsExplorer {
             }
         }
         dir_entries.sort_by(|item1, item2| {
-            return item1.file_name().cmp(&item2.file_name());
+            return alphanumeric_sort::compare_str(item1.file_name(), item2.file_name());
         });
         file_entries.sort_by(|item1, item2| {
-            return item1.file_name().cmp(&item2.file_name());
+            return alphanumeric_sort::compare_str(item1.file_name(), item2.file_name());
         });
         Ok((dir_entries, file_entries))
     }
